@@ -2,44 +2,17 @@ import streamlit as st
 import pandas as pd
 import joblib
 import pickle
-from wordcloud import WordCloud
 import io
 import matplotlib.pyplot as plt
 import numpy as np
+import joblib
+import qrcode
 from text_utils import contiene_palabra_clave_batch
 from text_utils import bootstrap_intervalo_confianza
 from limpieza import limpiar_texto
 
-modelo = pickle.load(open('model_nb.pkl', 'rb'))
-vectorizer = modelo.named_steps['features'].transformer_list[0][1]
-
-def analizar_wordcloud(modelo, texto_procesado, vectorizer, top_n):
-    # Extraer el modelo Naive Bayes del pipeline
-    naive_bayes_modelo = modelo.named_steps['clf']
-
-    # Obtener las clases y el recuento de características
-    clases = naive_bayes_modelo.classes_
-    feature_count = naive_bayes_modelo.feature_count_
-    
-    # Transformar el texto procesado utilizando el vectorizador
-    texto_vectorizado = vectorizer.transform([texto_procesado])
-
-    contribuciones = {}
-    for idx, clase in enumerate(clases):
-        # Calcular la importancia relativa de cada característica para esta clase
-        log_probabilidades = np.log(feature_count[idx, :] + 1)  # Se agrega 1 para evitar log(0)
-        # Usar get_feature_names_out() en lugar de get_feature_names()
-        contribuciones_clase = {vectorizer.get_feature_names_out()[i]: log_probabilidades[i] for i in texto_vectorizado.nonzero()[1]}
-        contribuciones[clase] = contribuciones_clase
-    contribuciones_combinadas = {}
-    for contribuciones_clase in contribuciones.values():
-        for palabra, importancia in contribuciones_clase.items():
-            contribuciones_combinadas[palabra] = contribuciones_combinadas.get(palabra, 0) + importancia
-
-    # Seleccionar las top_n palabras con mayor importancia
-    palabras_top = sorted(contribuciones_combinadas.items(), key=lambda x: x[1], reverse=True)[:top_n]
-    return dict(palabras_top)
-
+# Des
+modelo = joblib.load('model.sav')
 usuarios = {
     "admin": "admin12",
     "usuario1": "contraseña1",
@@ -67,32 +40,32 @@ if st.session_state['autenticado']:
         # Predicción
         if st.button('Predecir'):
             prediccion = modelo.predict([texto_limpio])
-            y_score = modelo.predict_proba([texto_limpio])
-            datos_wordcloud = analizar_wordcloud(modelo, texto_limpio, vectorizer, top_n=15)
-
-            # Crear el wordcloud
-            wordcloud = WordCloud(width=800, height=800, background_color='white', min_font_size=10).generate_from_frequencies(datos_wordcloud)
-
-            # Configurar el gráfico de matplotlib
-            fig, ax = plt.subplots()
-            ax.imshow(wordcloud, interpolation='bilinear')
-            ax.axis("off")
-
-            # Guardar la figura en un buffer de bytes
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png")
-            buf.seek(0)
-
-            # Mostrar el wordcloud en Streamlit
             st.write(f'La predicción según el modelo es:')
+            frase_prediccion = ""
             if prediccion[0] == 1:
-                st.write(f'Según el modelo de Naive Bayes, Sí poseé la enfermedad de Streptococcus agalactiae.')
+                frase_prediccion = "Según el modelo SVC, SÍ posee la enfermedad de Streptococcus agalactiae."
             else:
-                st.write(f'Según el modelo de Naive Bayes, NO poseé la enfermedad de Streptococcus agalactiae.')
-            st.write(f'La probabilidad obtenida en las dos clases es:')
-            st.write(f'La probabilidad de que tenga la enfermedad es {y_score[0][0]} y la probabilidad de que SÍ {y_score[0][1]}\n')
-            st.write(f'Imagen del conjunto de palabras que se tuvieron más en cuenta a la hora de la decisión de predecir el texto:')
-            st.image(buf, use_column_width=True)
+                frase_prediccion = "Según el modelo SVC, NO posee la enfermedad de Streptococcus agalactiae."
+            
+            st.write('La predicción según el modelo es:')
+            st.write(frase_prediccion)
+            
+            # Generación del código QR con el texto de la predicción
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(frase_prediccion)
+            qr.make(fit=True)
+            img_qr = qr.make_image(fill_color="black", back_color="white")
+            buf = io.BytesIO()
+            img_qr.save(buf)
+            buf.seek(0)
+            
+            st.image(buf, caption='Código QR con el resultado de la predicción')
+
 
 else:
     usuario = st.sidebar.text_input("Usuario")
