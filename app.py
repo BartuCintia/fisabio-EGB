@@ -40,7 +40,6 @@ if st.session_state['autenticado']:
         # Predicción
         if st.button('Predecir'):
             prediccion = modelo.predict([texto_limpio])
-            st.write(f'La predicción según el modelo es:')
             frase_prediccion = ""
             if prediccion[0] == 1:
                 frase_prediccion = "Según el modelo SVC, SÍ posee la enfermedad de Streptococcus agalactiae."
