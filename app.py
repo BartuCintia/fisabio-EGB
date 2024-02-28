@@ -7,12 +7,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import joblib
 import qrcode
+import xgboost
 from text_utils import contiene_palabra_clave_batch
 from text_utils import bootstrap_intervalo_confianza
 from limpieza import limpiar_texto
 
-# Des
+# Descargamos el modelo
 modelo = joblib.load('model.sav')
+# Usuarios y contraseñas 
 usuarios = {
     "admin": "admin12",
     "usuario1": "contraseña1",
@@ -28,28 +30,27 @@ if 'autenticado' not in st.session_state:
 
 if st.session_state['autenticado']:
     st.title('Predicción con Modelo de Machine Learning')
-    uploaded_file = st.file_uploader("Elige un archivo para predecir")
+    uploaded_file = st.file_uploader("Elige un archivo para predecir:", key="file_uploader")
+    texto_manual = st.text_area("Introduce el texto que deseé predecir, a continuación presiona Ctrl+Enter:", key="text_area")
 
+    contenido = ""
+    # Verifica si se ha cargado un archivo
     if uploaded_file is not None:
-        # Leer el contenido del archivo
         contenido = str(uploaded_file.read(), 'utf-8')
+    # Verifica si se ha ingresado texto manualmente
+    elif texto_manual != "":
+        contenido = texto_manual
 
-        # Limpiar el texto
-        texto_limpio = limpiar_texto(contenido)
-
-        # Predicción
-        if st.button('Predecir'):
+    # Muestra el botón de "Predecir" si hay contenido
+    if contenido:
+        if st.button('Predecir', key='predict_button'):
+            texto_limpio = limpiar_texto(contenido)
             prediccion = modelo.predict([texto_limpio])
-            frase_prediccion = ""
-            if prediccion[0] == 1:
-                frase_prediccion = "Según el modelo SVC, SÍ posee la enfermedad de Streptococcus agalactiae."
-            else:
-                frase_prediccion = "Según el modelo SVC, NO posee la enfermedad de Streptococcus agalactiae."
+            frase_prediccion = "Según el modelo, SÍ cumple con el criterio." if prediccion[0] == 1 else "Según el modelo, NO cumple con el criterio."
             
             st.write('La predicción según el modelo es:')
             st.write(frase_prediccion)
             
-            # Generación del código QR con el texto de la predicción
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -63,19 +64,13 @@ if st.session_state['autenticado']:
             img_qr.save(buf)
             buf.seek(0)
             
-            st.image(buf, caption='Código QR con el resultado de la predicción')
-
-
+            st.image(buf, caption='Código QR con el resultado de la predicción:')
 else:
-    usuario = st.sidebar.text_input("Usuario")
-    contraseña = st.sidebar.text_input("Contraseña", type="password")
-    if st.sidebar.button('Iniciar sesión'):
+    usuario = st.sidebar.text_input("Usuario", key="user_input")
+    contraseña = st.sidebar.text_input("Contraseña", type="password", key="password_input")
+    if st.sidebar.button('Iniciar sesión', key='login_button'):
         if verificar_credenciales(usuario, contraseña):
             st.session_state['autenticado'] = True
             st.rerun()
         else:
             st.sidebar.error("Credenciales incorrectas.")
-
-
-
-
