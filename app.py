@@ -46,7 +46,7 @@ if st.session_state['autenticado']:
         if st.button('Predecir', key='predict_button'):
             texto_limpio = limpiar_texto(contenido)
             prediccion = modelo.predict([texto_limpio])
-            frase_prediccion = "Según el modelo, SÍ cumple con el criterio." if prediccion[0] == 1 else "Según el modelo, NO cumple con el criterio."
+            frase_prediccion = "Esta gestante SÍ necesita tratamiento antibiotico para prevenir sepsis por EGB." if prediccion[0] == 1 else "Esta gestante NO necesita tratamiento antibiotico para prevenir sepsis por EGB."
             
             st.write('La predicción según el modelo es:')
             st.write(frase_prediccion)
